@@ -3,20 +3,24 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: GridTrade renewable-energy intelligence and P2P coordination API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: dashboard
+  - name: solar
+  - name: marketplace
+  - name: grid
+  - name: matching
+  - name: activity
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +28,330 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /v1/dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get the current GridTrade operating picture
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /v1/activity:
+    get:
+      operationId: getActivityFeed
+      tags: [activity]
+      summary: Get recent persisted platform activity
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Activity feed
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityEvent"
+
+  /v1/solar-systems:
+    get:
+      operationId: listSolarSystems
+      tags: [solar]
+      summary: List the current user's solar systems
+      responses:
+        "200":
+          description: Solar systems
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SolarSystem"
+    post:
+      operationId: createSolarSystem
+      tags: [solar]
+      summary: Register a solar system
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SolarSystemInput"
+      responses:
+        "201":
+          description: Created solar system
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SolarSystem"
+
+  /v1/energy-data:
+    get:
+      operationId: getEnergyOverview
+      tags: [solar]
+      summary: Get generation and consumption observations
+      parameters:
+        - $ref: "#/components/parameters/Window"
+      responses:
+        "200":
+          description: Energy overview
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EnergyObservation"
+
+  /v1/listings:
+    get:
+      operationId: listListings
+      tags: [marketplace]
+      summary: Browse active renewable-energy listings
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/ListingStatus"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        "200":
+          description: Marketplace listings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Listing"
+    post:
+      operationId: createListing
+      tags: [marketplace]
+      summary: Publish surplus energy to the marketplace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListingInput"
+      responses:
+        "201":
+          description: Created listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Listing"
+
+  /v1/grid/status:
+    get:
+      operationId: getGridStatus
+      tags: [grid]
+      summary: Get current local grid decision and conditions
+      responses:
+        "200":
+          description: Grid status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GridStatus"
+
+  /v1/matching/recommendations:
+    get:
+      operationId: getMatchRecommendations
+      tags: [matching]
+      summary: Get ranked market matches
+      responses:
+        "200":
+          description: Match recommendations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MatchRecommendation"
+
+  /v1/auth/session:
+    get:
+      operationId: getAuthSession
+      tags: [dashboard]
+      summary: Get the current authenticated session boundary
+      responses:
+        "200":
+          description: Session state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+
 components:
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 50
+        default: 10
+    Window:
+      name: window
+      in: query
+      schema:
+        type: string
+        enum: [24h, 7d, 30d]
+        default: 7d
   schemas:
     HealthStatus:
       type: object
+      required: [status, service, timestamp]
       properties:
         status:
           type: string
-      required:
-        - status
+          enum: [ok, degraded]
+        service:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
 
+    DashboardSummary:
+      type: object
+      required: [marketableSurplusKwh, activeListings, activeProsumers, currentPriceInrPerKwh, gridDecision, gridLabel, carbonAvoidedKg, energyTrend]
+      properties:
+        marketableSurplusKwh: { type: number }
+        activeListings: { type: integer }
+        activeProsumers: { type: integer }
+        currentPriceInrPerKwh: { type: number }
+        gridDecision:
+          $ref: "#/components/schemas/GridDecision"
+        gridLabel: { type: string }
+        carbonAvoidedKg: { type: number }
+        energyTrend:
+          type: array
+          items:
+            $ref: "#/components/schemas/EnergyObservation"
+
+    ActivityEvent:
+      type: object
+      required: [id, type, title, detail, occurredAt, status]
+      properties:
+        id: { type: string }
+        type:
+          type: string
+          enum: [listing, match, grid, transaction, prediction, alert]
+        title: { type: string }
+        detail: { type: string }
+        occurredAt: { type: string, format: date-time }
+        status:
+          type: string
+          enum: [positive, neutral, warning]
+
+    SolarSystem:
+      type: object
+      required: [id, name, capacityKw, location, status, todayGenerationKwh, todayConsumptionKwh]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        capacityKw: { type: number }
+        location: { type: string }
+        status:
+          type: string
+          enum: [online, standby, offline]
+        todayGenerationKwh: { type: number }
+        todayConsumptionKwh: { type: number }
+    SolarSystemInput:
+      type: object
+      required: [name, capacityKw, location]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        capacityKw: { type: number, exclusiveMinimum: 0 }
+        location: { type: string, minLength: 1, maxLength: 180 }
+
+    EnergyObservation:
+      type: object
+      required: [timestamp, generationKwh, consumptionKwh, marketableSurplusKwh]
+      properties:
+        timestamp: { type: string, format: date-time }
+        generationKwh: { type: number }
+        consumptionKwh: { type: number }
+        marketableSurplusKwh: { type: number }
+
+    Listing:
+      type: object
+      required: [id, sellerName, location, quantityKwh, priceInrPerKwh, status, availableFrom, availableUntil, matchScore, gridDecision]
+      properties:
+        id: { type: string, format: uuid }
+        sellerName: { type: string }
+        location: { type: string }
+        quantityKwh: { type: number }
+        priceInrPerKwh: { type: number }
+        status:
+          $ref: "#/components/schemas/ListingStatus"
+        availableFrom: { type: string, format: date-time }
+        availableUntil: { type: string, format: date-time }
+        matchScore: { type: number, minimum: 0, maximum: 100 }
+        gridDecision:
+          $ref: "#/components/schemas/GridDecision"
+    ListingInput:
+      type: object
+      required: [solarSystemId, quantityKwh, priceInrPerKwh, availableFrom, availableUntil]
+      properties:
+        solarSystemId: { type: string, format: uuid }
+        quantityKwh: { type: number, exclusiveMinimum: 0 }
+        priceInrPerKwh: { type: number, exclusiveMinimum: 0 }
+        availableFrom: { type: string, format: date-time }
+        availableUntil: { type: string, format: date-time }
+    ListingStatus:
+      type: string
+      enum: [active, matched, closed, restricted]
+
+    GridDecision:
+      type: string
+      enum: [APPROVED, ADJUSTED, RESTRICTED]
+    GridStatus:
+      type: object
+      required: [decision, label, congestionPercent, renewableSharePercent, frequencyHz, updatedAt]
+      properties:
+        decision:
+          $ref: "#/components/schemas/GridDecision"
+        label: { type: string }
+        congestionPercent: { type: number }
+        renewableSharePercent: { type: number }
+        frequencyHz: { type: number }
+        updatedAt: { type: string, format: date-time }
+
+    MatchRecommendation:
+      type: object
+      required: [id, listingId, sellerName, location, quantityKwh, priceInrPerKwh, score, rationale, factors]
+      properties:
+        id: { type: string }
+        listingId: { type: string, format: uuid }
+        sellerName: { type: string }
+        location: { type: string }
+        quantityKwh: { type: number }
+        priceInrPerKwh: { type: number }
+        score: { type: number, minimum: 0, maximum: 100 }
+        rationale: { type: string }
+        factors:
+          type: array
+          items: { type: string }
+
+    AuthSession:
+      type: object
+      required: [authenticated, role, displayName]
+      properties:
+        authenticated: { type: boolean }
+        role:
+          type: string
+          enum: [PROSUMER, CONSUMER, UTILITY, REGULATOR, ADMIN]
+        displayName: { type: string }
