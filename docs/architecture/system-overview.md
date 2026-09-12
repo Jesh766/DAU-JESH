@@ -1,31 +1,32 @@
-# GridTrade system overview
+# GridTrade System Overview
 
-GridTrade is a digital coordination, intelligence, marketplace, and
-transaction-record layer alongside the existing electrical grid. The platform
-does not physically route electricity between homes.
+GridTrade is a digital coordination, intelligence, marketplace, and transaction-record layer operating alongside the electrical power grid.
 
-## Runtime shape
+## Runtime Shape
 
 ```text
-React/Vite web
+React 19 + Vite Frontend (Control Room UI)
        |
        v
 Express REST API (/api/v1)
        |
-       +--> PostgreSQL (durable domain state)
-       +--> Redis (cache, queues, rate limits, event coordination)
-       +--> FastAPI AI boundary (/v1/predictions)
+       +--> PostgreSQL (Prisma ORM — Durable Domain State)
+       +--> Redis (ioredis — Cache, Queues, Rate Limits, Realtime Events)
+       +--> FastAPI AI Boundary (/v1/predict/*, /v1/detect/*)
 ```
 
-The API is a modular monolith. Domain services are intentionally separate from
-route handlers so matching, pricing, grid decisions, and settlement can grow
-without a service split.
+## Layer Responsibilities
 
-## Core workflow
+1. **Express API Server:** Modular monolith using Controller -> Service -> Repository layers. Route handlers remain thin.
+2. **PostgreSQL + Prisma:** Canonical database storing users, solar systems, energy telemetry, listings, demands, trades, transactions, payments, SHA-256 hash records, grid snapshots, predictions, and audit logs.
+3. **Redis Infrastructure:** Temporary fast coordination layer. Provides caching, job queues, rate limiting, and pub/sub. Includes local fallback when Redis is absent.
+4. **FastAPI AI Service:** Python service boundary for machine learning prediction models (generation, demand, pricing, anomaly detection).
+5. **React Control Room UI:** High-fidelity dashboard, marketplace, grid monitoring, asset management, and activity feed.
 
-Generate → Calculate Surplus → List → Discover Demand → Match → Price →
-Check Grid → Confirm → Secure Settlement → SHA-256 Hash → Transaction Ledger
+## Core Workflow
 
-The current build establishes the entities, API boundaries, validation,
-security middleware, and a representative control-room experience. It does not
-claim to run physical meter integrations or a trained prediction model.
+```text
+Generate Telemetry → Calculate Surplus → Create Listing / Demand →
+Grid Aware Constraint Check → Multi-Factor Match → Price Discovery →
+Execute Trade → Settle Transaction → Compute SHA-256 Hash → Append Audit Log
+```

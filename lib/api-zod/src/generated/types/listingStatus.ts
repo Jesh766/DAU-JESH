@@ -10,8 +10,10 @@ export type ListingStatus = typeof ListingStatus[keyof typeof ListingStatus];
 
 
 export const ListingStatus = {
-  active: 'active',
-  matched: 'matched',
-  closed: 'closed',
-  restricted: 'restricted',
+  ACTIVE: 'ACTIVE',
+  PARTIALLY_MATCHED: 'PARTIALLY_MATCHED',
+  FULLY_MATCHED: 'FULLY_MATCHED',
+  CLOSED: 'CLOSED',
+  CANCELLED: 'CANCELLED',
+  EXPIRED: 'EXPIRED',
 } as const;

@@ -131,7 +131,7 @@ export const listListingsQueryLimitMax = 50;
 
 
 export const ListListingsQueryParams = zod.object({
-  "status": zod.enum(['active', 'matched', 'closed', 'restricted']).optional(),
+  "status": zod.enum(['ACTIVE', 'PARTIALLY_MATCHED', 'FULLY_MATCHED', 'CLOSED', 'CANCELLED', 'EXPIRED']).optional(),
   "limit": zod.coerce.number().int().min(1).max(listListingsQueryLimitMax).default(listListingsQueryLimitDefault)
 })
 
@@ -142,11 +142,14 @@ export const listListingsResponseMatchScoreMax = 100;
 
 export const ListListingsResponseItem = zod.object({
   "id": zod.string().uuid(),
+  "sellerId": zod.string().uuid().optional(),
   "sellerName": zod.string(),
   "location": zod.string(),
   "quantityKwh": zod.number(),
+  "allocatedKwh": zod.number().optional(),
   "priceInrPerKwh": zod.number(),
-  "status": zod.enum(['active', 'matched', 'closed', 'restricted']),
+  "energyType": zod.string().optional(),
+  "status": zod.enum(['ACTIVE', 'PARTIALLY_MATCHED', 'FULLY_MATCHED', 'CLOSED', 'CANCELLED', 'EXPIRED']),
   "availableFrom": zod.coerce.date(),
   "availableUntil": zod.coerce.date(),
   "matchScore": zod.number().min(listListingsResponseMatchScoreMin).max(listListingsResponseMatchScoreMax),
@@ -168,6 +171,7 @@ export const CreateListingBody = zod.object({
   "solarSystemId": zod.string().uuid(),
   "quantityKwh": zod.number().gt(createListingBodyQuantityKwhExclusiveMin),
   "priceInrPerKwh": zod.number().gt(createListingBodyPriceInrPerKwhExclusiveMin),
+  "energyType": zod.string().optional(),
   "availableFrom": zod.coerce.date(),
   "availableUntil": zod.coerce.date()
 })
@@ -179,15 +183,263 @@ export const createListingResponseMatchScoreMax = 100;
 
 export const CreateListingResponse = zod.object({
   "id": zod.string().uuid(),
+  "sellerId": zod.string().uuid().optional(),
   "sellerName": zod.string(),
   "location": zod.string(),
   "quantityKwh": zod.number(),
+  "allocatedKwh": zod.number().optional(),
   "priceInrPerKwh": zod.number(),
-  "status": zod.enum(['active', 'matched', 'closed', 'restricted']),
+  "energyType": zod.string().optional(),
+  "status": zod.enum(['ACTIVE', 'PARTIALLY_MATCHED', 'FULLY_MATCHED', 'CLOSED', 'CANCELLED', 'EXPIRED']),
   "availableFrom": zod.coerce.date(),
   "availableUntil": zod.coerce.date(),
   "matchScore": zod.number().min(createListingResponseMatchScoreMin).max(createListingResponseMatchScoreMax),
   "gridDecision": zod.enum(['APPROVED', 'ADJUSTED', 'RESTRICTED'])
+})
+
+
+/**
+ * @summary List consumer energy demands
+ */
+export const listDemandsQueryLimitDefault = 20;
+export const listDemandsQueryLimitMax = 50;
+
+
+
+export const ListDemandsQueryParams = zod.object({
+  "status": zod.enum(['OPEN', 'PARTIALLY_MATCHED', 'FULLY_MATCHED', 'CLOSED', 'CANCELLED', 'EXPIRED']).optional(),
+  "limit": zod.coerce.number().int().min(1).max(listDemandsQueryLimitMax).default(listDemandsQueryLimitDefault)
+})
+
+export const ListDemandsResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "consumerId": zod.string().uuid(),
+  "consumerName": zod.string(),
+  "quantityKwh": zod.number(),
+  "allocatedKwh": zod.number().optional(),
+  "maxPriceInrPerKwh": zod.number(),
+  "preferredSource": zod.string().optional(),
+  "status": zod.enum(['OPEN', 'PARTIALLY_MATCHED', 'FULLY_MATCHED', 'CLOSED', 'CANCELLED', 'EXPIRED']),
+  "requiredFrom": zod.coerce.date(),
+  "requiredUntil": zod.coerce.date(),
+  "createdAt": zod.coerce.date().optional()
+})
+export const ListDemandsResponse = zod.array(ListDemandsResponseItem)
+
+
+/**
+ * @summary Create a consumer energy demand order
+ */
+export const createDemandBodyQuantityKwhExclusiveMin = 0;
+
+export const createDemandBodyMaxPriceInrPerKwhExclusiveMin = 0;
+
+
+
+export const CreateDemandBody = zod.object({
+  "quantityKwh": zod.number().gt(createDemandBodyQuantityKwhExclusiveMin),
+  "maxPriceInrPerKwh": zod.number().gt(createDemandBodyMaxPriceInrPerKwhExclusiveMin),
+  "preferredSource": zod.string().optional(),
+  "requiredFrom": zod.coerce.date(),
+  "requiredUntil": zod.coerce.date()
+})
+
+export const CreateDemandResponse = zod.object({
+  "id": zod.string().uuid(),
+  "consumerId": zod.string().uuid(),
+  "consumerName": zod.string(),
+  "quantityKwh": zod.number(),
+  "allocatedKwh": zod.number().optional(),
+  "maxPriceInrPerKwh": zod.number(),
+  "preferredSource": zod.string().optional(),
+  "status": zod.enum(['OPEN', 'PARTIALLY_MATCHED', 'FULLY_MATCHED', 'CLOSED', 'CANCELLED', 'EXPIRED']),
+  "requiredFrom": zod.coerce.date(),
+  "requiredUntil": zod.coerce.date(),
+  "createdAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary Get demand details by ID
+ */
+export const GetDemandParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const GetDemandResponse = zod.object({
+  "id": zod.string().uuid(),
+  "consumerId": zod.string().uuid(),
+  "consumerName": zod.string(),
+  "quantityKwh": zod.number(),
+  "allocatedKwh": zod.number().optional(),
+  "maxPriceInrPerKwh": zod.number(),
+  "preferredSource": zod.string().optional(),
+  "status": zod.enum(['OPEN', 'PARTIALLY_MATCHED', 'FULLY_MATCHED', 'CLOSED', 'CANCELLED', 'EXPIRED']),
+  "requiredFrom": zod.coerce.date(),
+  "requiredUntil": zod.coerce.date(),
+  "createdAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary Cancel an open energy demand
+ */
+export const CancelDemandParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const CancelDemandResponse = zod.object({
+  "id": zod.string().uuid(),
+  "consumerId": zod.string().uuid(),
+  "consumerName": zod.string(),
+  "quantityKwh": zod.number(),
+  "allocatedKwh": zod.number().optional(),
+  "maxPriceInrPerKwh": zod.number(),
+  "preferredSource": zod.string().optional(),
+  "status": zod.enum(['OPEN', 'PARTIALLY_MATCHED', 'FULLY_MATCHED', 'CLOSED', 'CANCELLED', 'EXPIRED']),
+  "requiredFrom": zod.coerce.date(),
+  "requiredUntil": zod.coerce.date(),
+  "createdAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary Get listing details by ID
+ */
+export const GetListingParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const getListingResponseMatchScoreMin = 0;
+export const getListingResponseMatchScoreMax = 100;
+
+
+
+export const GetListingResponse = zod.object({
+  "id": zod.string().uuid(),
+  "sellerId": zod.string().uuid().optional(),
+  "sellerName": zod.string(),
+  "location": zod.string(),
+  "quantityKwh": zod.number(),
+  "allocatedKwh": zod.number().optional(),
+  "priceInrPerKwh": zod.number(),
+  "energyType": zod.string().optional(),
+  "status": zod.enum(['ACTIVE', 'PARTIALLY_MATCHED', 'FULLY_MATCHED', 'CLOSED', 'CANCELLED', 'EXPIRED']),
+  "availableFrom": zod.coerce.date(),
+  "availableUntil": zod.coerce.date(),
+  "matchScore": zod.number().min(getListingResponseMatchScoreMin).max(getListingResponseMatchScoreMax),
+  "gridDecision": zod.enum(['APPROVED', 'ADJUSTED', 'RESTRICTED'])
+})
+
+
+/**
+ * @summary Close an active listing
+ */
+export const CloseListingParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const closeListingResponseMatchScoreMin = 0;
+export const closeListingResponseMatchScoreMax = 100;
+
+
+
+export const CloseListingResponse = zod.object({
+  "id": zod.string().uuid(),
+  "sellerId": zod.string().uuid().optional(),
+  "sellerName": zod.string(),
+  "location": zod.string(),
+  "quantityKwh": zod.number(),
+  "allocatedKwh": zod.number().optional(),
+  "priceInrPerKwh": zod.number(),
+  "energyType": zod.string().optional(),
+  "status": zod.enum(['ACTIVE', 'PARTIALLY_MATCHED', 'FULLY_MATCHED', 'CLOSED', 'CANCELLED', 'EXPIRED']),
+  "availableFrom": zod.coerce.date(),
+  "availableUntil": zod.coerce.date(),
+  "matchScore": zod.number().min(closeListingResponseMatchScoreMin).max(closeListingResponseMatchScoreMax),
+  "gridDecision": zod.enum(['APPROVED', 'ADJUSTED', 'RESTRICTED'])
+})
+
+
+/**
+ * @summary Cancel an active listing
+ */
+export const CancelListingParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const cancelListingResponseMatchScoreMin = 0;
+export const cancelListingResponseMatchScoreMax = 100;
+
+
+
+export const CancelListingResponse = zod.object({
+  "id": zod.string().uuid(),
+  "sellerId": zod.string().uuid().optional(),
+  "sellerName": zod.string(),
+  "location": zod.string(),
+  "quantityKwh": zod.number(),
+  "allocatedKwh": zod.number().optional(),
+  "priceInrPerKwh": zod.number(),
+  "energyType": zod.string().optional(),
+  "status": zod.enum(['ACTIVE', 'PARTIALLY_MATCHED', 'FULLY_MATCHED', 'CLOSED', 'CANCELLED', 'EXPIRED']),
+  "availableFrom": zod.coerce.date(),
+  "availableUntil": zod.coerce.date(),
+  "matchScore": zod.number().min(cancelListingResponseMatchScoreMin).max(cancelListingResponseMatchScoreMax),
+  "gridDecision": zod.enum(['APPROVED', 'ADJUSTED', 'RESTRICTED'])
+})
+
+
+/**
+ * @summary Get live dynamic pricing quote for region
+ */
+export const GetCurrentPricingResponse = zod.object({
+  "recommendedPricePerKwh": zod.number(),
+  "basePricePerKwh": zod.number(),
+  "supplyDemandFactor": zod.number(),
+  "congestionFactor": zod.number(),
+  "priceFloor": zod.number(),
+  "priceCeiling": zod.number(),
+  "explanation": zod.object({
+  "factors": zod.array(zod.object({
+  "key": zod.enum(['BASE_PRICE', 'SUPPLY', 'DEMAND', 'CONGESTION', 'MARKET_CONDITION']),
+  "direction": zod.enum(['UP', 'DOWN', 'NEUTRAL']),
+  "impactPercent": zod.number(),
+  "explanation": zod.string()
+})),
+  "summary": zod.string()
+}),
+  "version": zod.string()
+})
+
+
+/**
+ * @summary Calculate dynamic pricing for hypothetical market inputs
+ */
+export const GetPricingQuoteBody = zod.object({
+  "basePricePerKwh": zod.number().optional(),
+  "supplyKwh": zod.number(),
+  "demandKwh": zod.number(),
+  "congestionLevel": zod.number()
+})
+
+export const GetPricingQuoteResponse = zod.object({
+  "recommendedPricePerKwh": zod.number(),
+  "basePricePerKwh": zod.number(),
+  "supplyDemandFactor": zod.number(),
+  "congestionFactor": zod.number(),
+  "priceFloor": zod.number(),
+  "priceCeiling": zod.number(),
+  "explanation": zod.object({
+  "factors": zod.array(zod.object({
+  "key": zod.enum(['BASE_PRICE', 'SUPPLY', 'DEMAND', 'CONGESTION', 'MARKET_CONDITION']),
+  "direction": zod.enum(['UP', 'DOWN', 'NEUTRAL']),
+  "impactPercent": zod.number(),
+  "explanation": zod.string()
+})),
+  "summary": zod.string()
+}),
+  "version": zod.string()
 })
 
 
@@ -205,6 +457,18 @@ export const GetGridStatusResponse = zod.object({
 
 
 /**
+ * @summary List local feeder microgrid areas
+ */
+export const ListGridAreasResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "status": zod.enum(['APPROVED', 'ADJUSTED', 'RESTRICTED']),
+  "congestionPercent": zod.number()
+})
+export const ListGridAreasResponse = zod.array(ListGridAreasResponseItem)
+
+
+/**
  * @summary Get ranked market matches
  */
 export const getMatchRecommendationsResponseScoreMin = 0;
@@ -215,15 +479,326 @@ export const getMatchRecommendationsResponseScoreMax = 100;
 export const GetMatchRecommendationsResponseItem = zod.object({
   "id": zod.string(),
   "listingId": zod.string().uuid(),
+  "demandId": zod.string().uuid().optional(),
   "sellerName": zod.string(),
   "location": zod.string(),
   "quantityKwh": zod.number(),
   "priceInrPerKwh": zod.number(),
   "score": zod.number().min(getMatchRecommendationsResponseScoreMin).max(getMatchRecommendationsResponseScoreMax),
   "rationale": zod.string(),
-  "factors": zod.array(zod.string())
+  "factors": zod.array(zod.string()),
+  "reasons": zod.array(zod.object({
+  "code": zod.string(),
+  "description": zod.string(),
+  "impact": zod.enum(['positive', 'neutral', 'negative'])
+})).optional(),
+  "breakdown": zod.object({
+  "priceScore": zod.number(),
+  "availabilityScore": zod.number(),
+  "quantityFitScore": zod.number(),
+  "proximityScore": zod.number(),
+  "reliabilityScore": zod.number(),
+  "gridSuitabilityScore": zod.number()
+}).optional()
 })
 export const GetMatchRecommendationsResponse = zod.array(GetMatchRecommendationsResponseItem)
+
+
+/**
+ * @summary Get real intelligent matching recommendations for a consumer demand
+ */
+export const recommendMatchesBodyLimitDefault = 5;
+
+export const RecommendMatchesBody = zod.object({
+  "demandId": zod.string().uuid(),
+  "limit": zod.number().int().default(recommendMatchesBodyLimitDefault)
+})
+
+export const recommendMatchesResponseScoreMin = 0;
+export const recommendMatchesResponseScoreMax = 100;
+
+
+
+export const RecommendMatchesResponseItem = zod.object({
+  "id": zod.string(),
+  "listingId": zod.string().uuid(),
+  "demandId": zod.string().uuid().optional(),
+  "sellerName": zod.string(),
+  "location": zod.string(),
+  "quantityKwh": zod.number(),
+  "priceInrPerKwh": zod.number(),
+  "score": zod.number().min(recommendMatchesResponseScoreMin).max(recommendMatchesResponseScoreMax),
+  "rationale": zod.string(),
+  "factors": zod.array(zod.string()),
+  "reasons": zod.array(zod.object({
+  "code": zod.string(),
+  "description": zod.string(),
+  "impact": zod.enum(['positive', 'neutral', 'negative'])
+})).optional(),
+  "breakdown": zod.object({
+  "priceScore": zod.number(),
+  "availabilityScore": zod.number(),
+  "quantityFitScore": zod.number(),
+  "proximityScore": zod.number(),
+  "reliabilityScore": zod.number(),
+  "gridSuitabilityScore": zod.number()
+}).optional()
+})
+export const RecommendMatchesResponse = zod.array(RecommendMatchesResponseItem)
+
+
+/**
+ * @summary Generate pre-execution trade preview details
+ */
+export const getTradePreviewBodyRequestedKwhExclusiveMin = 0;
+
+
+
+export const GetTradePreviewBody = zod.object({
+  "demandId": zod.string().uuid().optional(),
+  "listingId": zod.string().uuid(),
+  "requestedKwh": zod.number().gt(getTradePreviewBodyRequestedKwhExclusiveMin)
+})
+
+export const GetTradePreviewResponse = zod.object({
+  "listingId": zod.string().uuid(),
+  "demandId": zod.string().uuid().optional(),
+  "sellerName": zod.string(),
+  "energyKwh": zod.number(),
+  "unitPriceInr": zod.number(),
+  "totalCostInr": zod.number(),
+  "estimatedLossesPercent": zod.number(),
+  "gridFeeInr": zod.number(),
+  "netCostInr": zod.number(),
+  "estimatedCarbonSavingsKg": zod.number(),
+  "transmissionFeasible": zod.boolean(),
+  "warnings": zod.array(zod.string()).optional()
+})
+
+
+/**
+ * @summary List user trade execution history
+ */
+export const ListTradesResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "listingId": zod.string().uuid(),
+  "demandId": zod.string().uuid().optional(),
+  "buyerId": zod.string().uuid(),
+  "sellerName": zod.string(),
+  "buyerName": zod.string().optional(),
+  "quantityKwh": zod.number(),
+  "agreedPriceInrPerKwh": zod.number(),
+  "gridDecision": zod.enum(['APPROVED', 'ADJUSTED', 'RESTRICTED']),
+  "netAmountInr": zod.number(),
+  "transactionId": zod.string().uuid().optional(),
+  "ledgerHash": zod.string().optional(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+export const ListTradesResponse = zod.array(ListTradesResponseItem)
+
+
+/**
+ * @summary Execute atomic trade against listing
+ */
+export const executeTradeBodyRequestedKwhExclusiveMin = 0;
+
+export const executeTradeBodyEnergyAmountKwhExclusiveMin = 0;
+
+
+
+export const ExecuteTradeBody = zod.object({
+  "listingId": zod.string().uuid(),
+  "demandId": zod.string().uuid().optional(),
+  "requestedKwh": zod.number().gt(executeTradeBodyRequestedKwhExclusiveMin),
+  "energyAmountKwh": zod.number().gt(executeTradeBodyEnergyAmountKwhExclusiveMin).optional()
+})
+
+export const ExecuteTradeResponse = zod.object({
+  "id": zod.string().uuid(),
+  "listingId": zod.string().uuid(),
+  "demandId": zod.string().uuid().optional(),
+  "buyerId": zod.string().uuid(),
+  "sellerName": zod.string(),
+  "buyerName": zod.string().optional(),
+  "quantityKwh": zod.number(),
+  "agreedPriceInrPerKwh": zod.number(),
+  "gridDecision": zod.enum(['APPROVED', 'ADJUSTED', 'RESTRICTED']),
+  "netAmountInr": zod.number(),
+  "transactionId": zod.string().uuid().optional(),
+  "ledgerHash": zod.string().optional(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get trade details by ID
+ */
+export const GetTradeByIdParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const GetTradeByIdResponse = zod.object({
+  "id": zod.string().uuid(),
+  "listingId": zod.string().uuid(),
+  "demandId": zod.string().uuid().optional(),
+  "buyerId": zod.string().uuid(),
+  "sellerName": zod.string(),
+  "buyerName": zod.string().optional(),
+  "quantityKwh": zod.number(),
+  "agreedPriceInrPerKwh": zod.number(),
+  "gridDecision": zod.enum(['APPROVED', 'ADJUSTED', 'RESTRICTED']),
+  "netAmountInr": zod.number(),
+  "transactionId": zod.string().uuid().optional(),
+  "ledgerHash": zod.string().optional(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List user transactions
+ */
+export const ListTransactionsResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "tradeId": zod.string().uuid(),
+  "buyerName": zod.string(),
+  "sellerName": zod.string(),
+  "amountInr": zod.number(),
+  "quantityKwh": zod.number(),
+  "agreedPriceInrPerKwh": zod.number(),
+  "status": zod.string(),
+  "paymentStatus": zod.enum(['PENDING', 'PROCESSING', 'PAID', 'FAILED', 'CANCELLED', 'REFUNDED']),
+  "blockIndex": zod.number().int(),
+  "hash": zod.string().optional(),
+  "previousHash": zod.string().optional(),
+  "settledAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})
+export const ListTransactionsResponse = zod.array(ListTransactionsResponseItem)
+
+
+/**
+ * @summary Audit whole ledger chain integrity
+ */
+export const VerifyLedgerResponse = zod.object({
+  "verified": zod.boolean(),
+  "totalBlocks": zod.number().int(),
+  "verifiedBlocks": zod.number().int(),
+  "firstInvalidBlock": zod.number().int().optional(),
+  "failureReason": zod.string().optional(),
+  "checkedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get transaction details by ID
+ */
+export const GetTransactionByIdParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const GetTransactionByIdResponse = zod.object({
+  "id": zod.string().uuid(),
+  "tradeId": zod.string().uuid(),
+  "buyerName": zod.string(),
+  "sellerName": zod.string(),
+  "amountInr": zod.number(),
+  "quantityKwh": zod.number(),
+  "agreedPriceInrPerKwh": zod.number(),
+  "status": zod.string(),
+  "paymentStatus": zod.enum(['PENDING', 'PROCESSING', 'PAID', 'FAILED', 'CANCELLED', 'REFUNDED']),
+  "blockIndex": zod.number().int(),
+  "hash": zod.string().optional(),
+  "previousHash": zod.string().optional(),
+  "settledAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Perform live SHA-256 tamper verification on transaction
+ */
+export const VerifyTransactionParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const VerifyTransactionResponse = zod.object({
+  "transactionId": zod.string().uuid(),
+  "verified": zod.boolean(),
+  "result": zod.enum(['VALID', 'INVALID_HASH', 'INVALID_CHAIN', 'MISSING_HASH_RECORD', 'MALFORMED_RECORD']),
+  "blockIndex": zod.number().int().optional(),
+  "hash": zod.string().optional(),
+  "previousHash": zod.string().optional(),
+  "expectedHash": zod.string().optional(),
+  "explanation": zod.string().optional(),
+  "checkedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get payment details for transaction
+ */
+export const GetPaymentForTransactionParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const GetPaymentForTransactionResponse = zod.object({
+  "id": zod.string().uuid(),
+  "transactionId": zod.string().uuid(),
+  "provider": zod.string(),
+  "providerReference": zod.string().optional(),
+  "paymentMethod": zod.string().optional(),
+  "amountInr": zod.number(),
+  "status": zod.enum(['PENDING', 'PROCESSING', 'PAID', 'FAILED', 'CANCELLED', 'REFUNDED']),
+  "paidAt": zod.coerce.date().optional(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Create idempotent payment request for transaction
+ */
+export const CreatePaymentForTransactionParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const CreatePaymentForTransactionBody = zod.object({
+  "idempotencyKey": zod.string().optional(),
+  "paymentMethod": zod.string().optional()
+})
+
+export const CreatePaymentForTransactionResponse = zod.object({
+  "id": zod.string().uuid(),
+  "transactionId": zod.string().uuid(),
+  "provider": zod.string(),
+  "providerReference": zod.string().optional(),
+  "paymentMethod": zod.string().optional(),
+  "amountInr": zod.number(),
+  "status": zod.enum(['PENDING', 'PROCESSING', 'PAID', 'FAILED', 'CANCELLED', 'REFUNDED']),
+  "paidAt": zod.coerce.date().optional(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Idempotent payment webhook ingestion
+ */
+export const HandlePaymentWebhookParams = zod.object({
+  "provider": zod.coerce.string()
+})
+
+export const HandlePaymentWebhookBody = zod.object({
+  "eventId": zod.string().optional(),
+  "paymentId": zod.string().optional(),
+  "status": zod.string().optional()
+})
+
+export const HandlePaymentWebhookResponse = zod.object({
+  "status": zod.string(),
+  "webhookLogId": zod.string().uuid()
+})
 
 
 /**
@@ -233,6 +808,127 @@ export const GetAuthSessionResponse = zod.object({
   "authenticated": zod.boolean(),
   "role": zod.enum(['PROSUMER', 'CONSUMER', 'UTILITY', 'REGULATOR', 'ADMIN']),
   "displayName": zod.string()
+})
+
+
+/**
+ * @summary Check health and availability status of Python FastAPI AI service
+ */
+export const GetAiHealthResponse = zod.object({
+  "status": zod.string().optional()
+})
+
+
+/**
+ * @summary List persistent AI predictions with model versioning and stale indicators
+ */
+export const listPredictionsQueryLimitDefault = 20;
+
+export const ListPredictionsQueryParams = zod.object({
+  "type": zod.coerce.string().optional(),
+  "limit": zod.coerce.number().int().default(listPredictionsQueryLimitDefault)
+})
+
+export const ListPredictionsResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "predictionType": zod.string(),
+  "horizon": zod.string(),
+  "payload": zod.object({
+
+}).passthrough(),
+  "confidence": zod.number().nullish(),
+  "modelVersion": zod.string(),
+  "staleAt": zod.coerce.date().nullish(),
+  "isStale": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const ListPredictionsResponse = zod.array(ListPredictionsResponseItem)
+
+
+/**
+ * @summary Get Smart Sell recommendations with explanations and grid safety rules
+ */
+export const GetSmartSellRecommendationsResponse = zod.object({
+  "id": zod.string().uuid().optional(),
+  "kind": zod.enum(['SMART_SELL', 'SMART_BUY']),
+  "score": zod.number(),
+  "listingId": zod.string().uuid().optional(),
+  "demandId": zod.string().uuid().optional(),
+  "suggestedQuantityKwh": zod.number(),
+  "suggestedPriceInrPerKwh": zod.number(),
+  "expectedValueInr": zod.number(),
+  "reasons": zod.array(zod.string()),
+  "gridStatus": zod.string(),
+  "predictionMetadata": zod.object({
+
+}).passthrough()
+})
+
+
+/**
+ * @summary Get Smart Buy recommendations matching active renewable listings
+ */
+export const GetSmartBuyRecommendationsResponse = zod.object({
+  "id": zod.string().uuid().optional(),
+  "kind": zod.enum(['SMART_SELL', 'SMART_BUY']),
+  "score": zod.number(),
+  "listingId": zod.string().uuid().optional(),
+  "demandId": zod.string().uuid().optional(),
+  "suggestedQuantityKwh": zod.number(),
+  "suggestedPriceInrPerKwh": zod.number(),
+  "expectedValueInr": zod.number(),
+  "reasons": zod.array(zod.string()),
+  "gridStatus": zod.string(),
+  "predictionMetadata": zod.object({
+
+}).passthrough()
+})
+
+
+/**
+ * @summary List open or reviewed metric and trading anomalies for admin queue
+ */
+export const ListAnomaliesQueryParams = zod.object({
+  "status": zod.coerce.string().optional(),
+  "severity": zod.coerce.string().optional()
+})
+
+export const ListAnomaliesResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "userId": zod.string().uuid().nullish(),
+  "entityType": zod.string(),
+  "entityId": zod.string().nullish(),
+  "score": zod.number(),
+  "severity": zod.string(),
+  "reasons": zod.array(zod.string()),
+  "modelVersion": zod.string(),
+  "status": zod.enum(['OPEN', 'REVIEWING', 'RESOLVED', 'DISMISSED']),
+  "reviewedBy": zod.string().uuid().nullish(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAnomaliesResponse = zod.array(ListAnomaliesResponseItem)
+
+
+/**
+ * @summary Chat with AI Energy Assistant for explainable grid and trade insights
+ */
+export const ChatAssistantBody = zod.object({
+  "message": zod.string(),
+  "conversationId": zod.string().optional()
+})
+
+export const ChatAssistantResponse = zod.object({
+  "answer": zod.string(),
+  "sources": zod.array(zod.string()),
+  "confidence": zod.number(),
+  "generatedAt": zod.coerce.date(),
+  "conversationId": zod.string().optional(),
+  "suggestedActions": zod.array(zod.object({
+  "label": zod.string().optional(),
+  "action": zod.string().optional(),
+  "targetUrl": zod.string().optional()
+})).optional()
 })
 
 

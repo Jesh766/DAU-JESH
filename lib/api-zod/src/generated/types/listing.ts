@@ -10,10 +10,13 @@ import type { ListingStatus } from './listingStatus';
 
 export interface Listing {
   id: string;
+  sellerId?: string;
   sellerName: string;
   location: string;
   quantityKwh: number;
+  allocatedKwh?: number;
   priceInrPerKwh: number;
+  energyType?: string;
   status: ListingStatus;
   availableFrom: Date;
   availableUntil: Date;

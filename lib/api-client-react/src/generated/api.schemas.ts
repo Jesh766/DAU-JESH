@@ -114,18 +114,23 @@ export type ListingStatus = typeof ListingStatus[keyof typeof ListingStatus];
 
 
 export const ListingStatus = {
-  active: 'active',
-  matched: 'matched',
-  closed: 'closed',
-  restricted: 'restricted',
+  ACTIVE: 'ACTIVE',
+  PARTIALLY_MATCHED: 'PARTIALLY_MATCHED',
+  FULLY_MATCHED: 'FULLY_MATCHED',
+  CLOSED: 'CLOSED',
+  CANCELLED: 'CANCELLED',
+  EXPIRED: 'EXPIRED',
 } as const;
 
 export interface Listing {
   id: string;
+  sellerId?: string;
   sellerName: string;
   location: string;
   quantityKwh: number;
+  allocatedKwh?: number;
   priceInrPerKwh: number;
+  energyType?: string;
   status: ListingStatus;
   availableFrom: string;
   availableUntil: string;
@@ -143,8 +148,57 @@ export interface ListingInput {
   quantityKwh: number;
   /** @exclusiveMinimum 0 */
   priceInrPerKwh: number;
+  energyType?: string;
   availableFrom: string;
   availableUntil: string;
+}
+
+export type DemandStatus = typeof DemandStatus[keyof typeof DemandStatus];
+
+
+export const DemandStatus = {
+  OPEN: 'OPEN',
+  PARTIALLY_MATCHED: 'PARTIALLY_MATCHED',
+  FULLY_MATCHED: 'FULLY_MATCHED',
+  CLOSED: 'CLOSED',
+  CANCELLED: 'CANCELLED',
+  EXPIRED: 'EXPIRED',
+} as const;
+
+export interface Demand {
+  id: string;
+  consumerId: string;
+  consumerName: string;
+  quantityKwh: number;
+  allocatedKwh?: number;
+  maxPriceInrPerKwh: number;
+  preferredSource?: string;
+  status: DemandStatus;
+  requiredFrom: string;
+  requiredUntil: string;
+  createdAt?: string;
+}
+
+export interface DemandInput {
+  /** @exclusiveMinimum 0 */
+  quantityKwh: number;
+  /** @exclusiveMinimum 0 */
+  maxPriceInrPerKwh: number;
+  preferredSource?: string;
+  requiredFrom: string;
+  requiredUntil: string;
+}
+
+export interface RecommendMatchesInput {
+  demandId: string;
+  limit?: number;
+}
+
+export interface TradePreviewInput {
+  demandId?: string;
+  listingId: string;
+  /** @exclusiveMinimum 0 */
+  requestedKwh: number;
 }
 
 export interface GridStatus {
@@ -156,9 +210,34 @@ export interface GridStatus {
   updatedAt: string;
 }
 
+export type MatchReasonImpact = typeof MatchReasonImpact[keyof typeof MatchReasonImpact];
+
+
+export const MatchReasonImpact = {
+  positive: 'positive',
+  neutral: 'neutral',
+  negative: 'negative',
+} as const;
+
+export interface MatchReason {
+  code: string;
+  description: string;
+  impact: MatchReasonImpact;
+}
+
+export interface MatchScoreBreakdown {
+  priceScore: number;
+  availabilityScore: number;
+  quantityFitScore: number;
+  proximityScore: number;
+  reliabilityScore: number;
+  gridSuitabilityScore: number;
+}
+
 export interface MatchRecommendation {
   id: string;
   listingId: string;
+  demandId?: string;
   sellerName: string;
   location: string;
   quantityKwh: number;
@@ -170,6 +249,23 @@ export interface MatchRecommendation {
   score: number;
   rationale: string;
   factors: string[];
+  reasons?: MatchReason[];
+  breakdown?: MatchScoreBreakdown;
+}
+
+export interface TradePreview {
+  listingId: string;
+  demandId?: string;
+  sellerName: string;
+  energyKwh: number;
+  unitPriceInr: number;
+  totalCostInr: number;
+  estimatedLossesPercent: number;
+  gridFeeInr: number;
+  netCostInr: number;
+  estimatedCarbonSavingsKg: number;
+  transmissionFeasible: boolean;
+  warnings?: string[];
 }
 
 export type AuthSessionRole = typeof AuthSessionRole[keyof typeof AuthSessionRole];
@@ -187,6 +283,261 @@ export interface AuthSession {
   authenticated: boolean;
   role: AuthSessionRole;
   displayName: string;
+}
+
+export interface GridArea {
+  id: string;
+  name: string;
+  status: GridDecision;
+  congestionPercent: number;
+}
+
+export type PriceFactorExplanationKey = typeof PriceFactorExplanationKey[keyof typeof PriceFactorExplanationKey];
+
+
+export const PriceFactorExplanationKey = {
+  BASE_PRICE: 'BASE_PRICE',
+  SUPPLY: 'SUPPLY',
+  DEMAND: 'DEMAND',
+  CONGESTION: 'CONGESTION',
+  MARKET_CONDITION: 'MARKET_CONDITION',
+} as const;
+
+export type PriceFactorExplanationDirection = typeof PriceFactorExplanationDirection[keyof typeof PriceFactorExplanationDirection];
+
+
+export const PriceFactorExplanationDirection = {
+  UP: 'UP',
+  DOWN: 'DOWN',
+  NEUTRAL: 'NEUTRAL',
+} as const;
+
+export interface PriceFactorExplanation {
+  key: PriceFactorExplanationKey;
+  direction: PriceFactorExplanationDirection;
+  impactPercent: number;
+  explanation: string;
+}
+
+export interface PricingExplanation {
+  factors: PriceFactorExplanation[];
+  summary: string;
+}
+
+export interface PricingQuote {
+  recommendedPricePerKwh: number;
+  basePricePerKwh: number;
+  supplyDemandFactor: number;
+  congestionFactor: number;
+  priceFloor: number;
+  priceCeiling: number;
+  explanation: PricingExplanation;
+  version: string;
+}
+
+export interface PricingQuoteInput {
+  basePricePerKwh?: number;
+  supplyKwh: number;
+  demandKwh: number;
+  congestionLevel: number;
+}
+
+export interface CreateTradeInput {
+  listingId: string;
+  demandId?: string;
+  /** @exclusiveMinimum 0 */
+  requestedKwh: number;
+  /** @exclusiveMinimum 0 */
+  energyAmountKwh?: number;
+}
+
+export interface TradeResult {
+  id: string;
+  listingId: string;
+  demandId?: string;
+  buyerId: string;
+  sellerName: string;
+  buyerName?: string;
+  quantityKwh: number;
+  agreedPriceInrPerKwh: number;
+  gridDecision: GridDecision;
+  netAmountInr: number;
+  transactionId?: string;
+  ledgerHash?: string;
+  status: string;
+  createdAt: string;
+}
+
+export type PaymentStatus = typeof PaymentStatus[keyof typeof PaymentStatus];
+
+
+export const PaymentStatus = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
+  REFUNDED: 'REFUNDED',
+} as const;
+
+export interface PaymentRecord {
+  id: string;
+  transactionId: string;
+  provider: string;
+  providerReference?: string;
+  paymentMethod?: string;
+  amountInr: number;
+  status: PaymentStatus;
+  paidAt?: string;
+  createdAt: string;
+}
+
+export interface CreatePaymentInput {
+  idempotencyKey?: string;
+  paymentMethod?: string;
+}
+
+export interface TransactionRecord {
+  id: string;
+  tradeId: string;
+  buyerName: string;
+  sellerName: string;
+  amountInr: number;
+  quantityKwh: number;
+  agreedPriceInrPerKwh: number;
+  status: string;
+  paymentStatus: PaymentStatus;
+  blockIndex: number;
+  hash?: string;
+  previousHash?: string;
+  settledAt: string;
+  createdAt: string;
+}
+
+export type TransactionVerificationResultResult = typeof TransactionVerificationResultResult[keyof typeof TransactionVerificationResultResult];
+
+
+export const TransactionVerificationResultResult = {
+  VALID: 'VALID',
+  INVALID_HASH: 'INVALID_HASH',
+  INVALID_CHAIN: 'INVALID_CHAIN',
+  MISSING_HASH_RECORD: 'MISSING_HASH_RECORD',
+  MALFORMED_RECORD: 'MALFORMED_RECORD',
+} as const;
+
+export interface TransactionVerificationResult {
+  transactionId: string;
+  verified: boolean;
+  result: TransactionVerificationResultResult;
+  blockIndex?: number;
+  hash?: string;
+  previousHash?: string;
+  expectedHash?: string;
+  explanation?: string;
+  checkedAt: string;
+}
+
+export interface WholeLedgerVerificationResult {
+  verified: boolean;
+  totalBlocks: number;
+  verifiedBlocks: number;
+  firstInvalidBlock?: number;
+  failureReason?: string;
+  checkedAt: string;
+}
+
+export interface WebhookInput {
+  eventId?: string;
+  paymentId?: string;
+  status?: string;
+}
+
+export interface WebhookResult {
+  status: string;
+  webhookLogId: string;
+}
+
+export type AiPredictionRecordPayload = { [key: string]: unknown };
+
+export interface AiPredictionRecord {
+  id: string;
+  predictionType: string;
+  horizon: string;
+  payload: AiPredictionRecordPayload;
+  confidence?: number | null;
+  modelVersion: string;
+  staleAt?: string | null;
+  isStale: boolean;
+  createdAt: string;
+}
+
+export type SmartRecommendationRecordKind = typeof SmartRecommendationRecordKind[keyof typeof SmartRecommendationRecordKind];
+
+
+export const SmartRecommendationRecordKind = {
+  SMART_SELL: 'SMART_SELL',
+  SMART_BUY: 'SMART_BUY',
+} as const;
+
+export type SmartRecommendationRecordPredictionMetadata = { [key: string]: unknown };
+
+export interface SmartRecommendationRecord {
+  id?: string;
+  kind: SmartRecommendationRecordKind;
+  score: number;
+  listingId?: string;
+  demandId?: string;
+  suggestedQuantityKwh: number;
+  suggestedPriceInrPerKwh: number;
+  expectedValueInr: number;
+  reasons: string[];
+  gridStatus: string;
+  predictionMetadata: SmartRecommendationRecordPredictionMetadata;
+}
+
+export type AnomalyRecordStatus = typeof AnomalyRecordStatus[keyof typeof AnomalyRecordStatus];
+
+
+export const AnomalyRecordStatus = {
+  OPEN: 'OPEN',
+  REVIEWING: 'REVIEWING',
+  RESOLVED: 'RESOLVED',
+  DISMISSED: 'DISMISSED',
+} as const;
+
+export interface AnomalyRecord {
+  id: string;
+  userId?: string | null;
+  entityType: string;
+  entityId?: string | null;
+  score: number;
+  severity: string;
+  reasons: string[];
+  modelVersion: string;
+  status: AnomalyRecordStatus;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
+  createdAt: string;
+}
+
+export interface AssistantChatInput {
+  message: string;
+  conversationId?: string;
+}
+
+export type AssistantChatResponseSuggestedActionsItem = {
+  label?: string;
+  action?: string;
+  targetUrl?: string;
+};
+
+export interface AssistantChatResponse {
+  answer: string;
+  sources: string[];
+  confidence: number;
+  generatedAt: string;
+  conversationId?: string;
+  suggestedActions?: AssistantChatResponseSuggestedActionsItem[];
 }
 
 export type LimitParameter = number;
@@ -219,5 +570,28 @@ status?: ListingStatus;
  * @maximum 50
  */
 limit?: number;
+};
+
+export type ListDemandsParams = {
+status?: DemandStatus;
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+};
+
+export type GetAiHealth200 = {
+  status?: string;
+};
+
+export type ListPredictionsParams = {
+type?: string;
+limit?: number;
+};
+
+export type ListAnomaliesParams = {
+status?: string;
+severity?: string;
 };
 

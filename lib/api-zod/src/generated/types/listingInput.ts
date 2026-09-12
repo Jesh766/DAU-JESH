@@ -12,6 +12,7 @@ export interface ListingInput {
   quantityKwh: number;
   /** @exclusiveMinimum 0 */
   priceInrPerKwh: number;
+  energyType?: string;
   availableFrom: Date;
   availableUntil: Date;
 }

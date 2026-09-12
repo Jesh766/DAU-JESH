@@ -1,157 +1,156 @@
 import { Router, type IRouter } from "express";
+import { getDashboardSummary } from "../controllers/dashboard.controller";
+import { getActivityFeed, getEnergyData } from "../controllers/activity.controller";
+import { listSolarSystems, createSolarSystem } from "../controllers/solar.controller";
 import {
-  CreateListingBody,
-  CreateSolarSystemBody,
-  GetActivityFeedQueryParams,
-  GetActivityFeedResponse,
-  GetAuthSessionResponse,
-  GetDashboardSummaryResponse,
-  GetEnergyOverviewQueryParams,
-  GetEnergyOverviewResponse,
-  GetGridStatusResponse,
-  GetMatchRecommendationsResponse,
-  ListListingsQueryParams,
-  ListListingsResponse,
-  ListSolarSystemsResponse,
-} from "@workspace/api-zod";
-import { calculateSurplus, assertPositiveEnergy, assertValidAvailability } from "../domain/energy";
-import { scoreMatch } from "../domain/matching";
-import { AppError } from "../middleware/errors";
-import { demoStore } from "../data/demo-store";
+  listListings,
+  getListingById,
+  createListing,
+  closeListing,
+  cancelListing,
+} from "../controllers/marketplace.controller";
+import {
+  listDemands,
+  getDemandById,
+  createDemand,
+  cancelDemand,
+} from "../controllers/demand.controller";
+import { getGridStatus, listGridAreas, getGridAreaStatus } from "../controllers/grid.controller";
+import { getCurrentPrice, getPriceQuote } from "../controllers/pricing.controller";
+import {
+  getMatchRecommendations,
+  recommendMatches,
+  getTradePreview,
+} from "../controllers/matching.controller";
+import { createTrade, listTrades, getTradeById } from "../controllers/trade.controller";
+import {
+  listTransactions,
+  getTransactionById,
+  verifyTransaction,
+  verifyLedger,
+} from "../controllers/transaction.controller";
+import {
+  createPaymentForTransaction,
+  getPaymentForTransaction,
+  handlePaymentWebhook,
+} from "../controllers/payment.controller";
+import {
+  getAiHealth,
+  listPredictions,
+  generateGenerationForecast,
+  generateDemandForecast,
+  generatePriceSignal,
+} from "../controllers/prediction.controller";
+import {
+  getSmartSellRecommendations,
+  getSmartBuyRecommendations,
+  dismissRecommendation,
+} from "../controllers/recommendation.controller";
+import {
+  listAnomalies,
+  reviewAnomaly,
+  detectAnomaly,
+} from "../controllers/anomaly.controller";
+import {
+  chatAssistant,
+  getAssistantContext,
+} from "../controllers/assistant.controller";
+import {
+  handleRealtimeStream,
+  handleTriggerSimulation,
+  handleGetUtilityDashboard,
+  handleGetAdminDashboard,
+  handleGetRegulatorDashboard,
+  handleGetAlerts,
+  handleAcknowledgeAlert,
+} from "../controllers/operations.controller";
+import { getAuthSession } from "../controllers/auth.controller";
+import { requirePermission } from "../middleware/auth";
+import { simulationRateLimit, paymentRateLimit, assistantRateLimit, predictionRateLimit } from "../middleware/security";
 
 const router: IRouter = Router();
 
-router.get("/v1/dashboard/summary", (_req, res) => {
-  const marketableSurplusKwh = demoStore.energy.reduce(
-    (total, observation) => total + observation.marketableSurplusKwh,
-    0,
-  );
-  const currentPriceInrPerKwh = Math.min(
-    ...demoStore.listings
-      .filter((listing) => listing.status === "active")
-      .map((listing) => listing.priceInrPerKwh),
-  );
-  res.json(
-    GetDashboardSummaryResponse.parse({
-      marketableSurplusKwh: Number(marketableSurplusKwh.toFixed(2)),
-      activeListings: demoStore.listings.filter((listing) => listing.status === "active")
-        .length,
-      activeProsumers: 184,
-      currentPriceInrPerKwh,
-      gridDecision: demoStore.gridDecision,
-      gridLabel: demoStore.gridLabel,
-      carbonAvoidedKg: Number((marketableSurplusKwh * 0.68).toFixed(2)),
-      energyTrend: demoStore.energy,
-    }),
-  );
-});
+// Dashboard & Activity
+router.get("/v1/dashboard/summary", getDashboardSummary);
+router.get("/v1/activity", getActivityFeed);
 
-router.get("/v1/activity", (req, res) => {
-  const params = GetActivityFeedQueryParams.parse(req.query);
-  res.json(GetActivityFeedResponse.parse(demoStore.activity.slice(0, params.limit)));
-});
+// Solar Systems
+router.get("/v1/solar-systems", listSolarSystems);
+router.post("/v1/solar-systems", requirePermission("solar:create"), createSolarSystem);
+router.get("/v1/energy-data", getEnergyData);
 
-router.get("/v1/solar-systems", (_req, res) => {
-  res.json(ListSolarSystemsResponse.parse(demoStore.solarSystems));
-});
+// Marketplace Listings
+router.get("/v1/listings", listListings);
+router.post("/v1/listings", requirePermission("listing:create"), createListing);
+router.get("/v1/listings/:id", getListingById);
+router.post("/v1/listings/:id/close", requirePermission("listing:cancel"), closeListing);
+router.post("/v1/listings/:id/cancel", requirePermission("listing:cancel"), cancelListing);
 
-router.post("/v1/solar-systems", (req, res, next) => {
-  try {
-    const input = CreateSolarSystemBody.parse(req.body);
-    const system = demoStore.addSolarSystem(input);
-    res.status(201).json(system);
-  } catch (error) {
-    next(new AppError("INVALID_SOLAR_SYSTEM", error instanceof Error ? error.message : "Invalid solar system", 400));
-  }
-});
+// Consumer Demands
+router.get("/v1/demands", listDemands);
+router.post("/v1/demands", requirePermission("demand:create"), createDemand);
+router.get("/v1/demands/:id", getDemandById);
+router.post("/v1/demands/:id/cancel", cancelDemand);
 
-router.get("/v1/energy-data", (req, res) => {
-  GetEnergyOverviewQueryParams.parse(req.query);
-  res.json(GetEnergyOverviewResponse.parse(demoStore.energy));
-});
+// Dynamic Pricing Engine
+router.get("/v1/pricing/current", getCurrentPrice);
+router.post("/v1/pricing/quote", getPriceQuote);
 
-router.get("/v1/listings", (req, res) => {
-  const params = ListListingsQueryParams.parse(req.query);
-  const listings = demoStore.listings.filter(
-    (listing) => !params.status || listing.status === params.status,
-  );
-  res.json(ListListingsResponse.parse(listings.slice(0, params.limit)));
-});
+// Grid Status & Grid Areas
+router.get("/v1/grid/status", getGridStatus);
+router.get("/v1/grid/areas", listGridAreas);
+router.get("/v1/grid/areas/:areaId/status", getGridAreaStatus);
 
-router.post("/v1/listings", (req, res, next) => {
-  try {
-    const input = CreateListingBody.parse(req.body);
-    assertPositiveEnergy(String(input.quantityKwh), "quantityKwh");
-    const availableFrom = new Date(input.availableFrom);
-    const availableUntil = new Date(input.availableUntil);
-    assertValidAvailability(availableFrom, availableUntil);
-    const listing = demoStore.addListing({
-      ...input,
-      availableFrom,
-      availableUntil,
-    });
-    res.status(201).json(listing);
-  } catch (error) {
-    next(new AppError("INVALID_LISTING", error instanceof Error ? error.message : "Invalid listing", 400));
-  }
-});
+// Matching Engine & Pre-Execution Trade Preview
+router.get("/v1/matching/recommendations", getMatchRecommendations);
+router.post("/v1/matching/recommend", recommendMatches);
+router.get("/v1/matching/trade-preview", getTradePreview);
+router.post("/v1/matching/trade-preview", getTradePreview);
 
-router.get("/v1/grid/status", (_req, res) => {
-  res.json(
-    GetGridStatusResponse.parse({
-      decision: demoStore.gridDecision,
-      label: demoStore.gridLabel,
-      ...demoStore.gridInputs,
-      updatedAt: new Date(),
-    }),
-  );
-});
+// Trade Execution & History
+router.post("/v1/trades", requirePermission("trade:create"), createTrade);
+router.get("/v1/trades", listTrades);
+router.get("/v1/trades/:id", getTradeById);
 
-router.get("/v1/matching/recommendations", (_req, res) => {
-  const recommendations = demoStore.listings
-    .filter((listing) => listing.status === "active")
-    .map((listing, index) => {
-      const score = scoreMatch({
-        id: listing.id,
-        sellerName: listing.sellerName,
-        location: listing.location,
-        quantityKwh: listing.quantityKwh,
-        priceInrPerKwh: listing.priceInrPerKwh,
-        gridDecision: listing.gridDecision,
-        distanceKm: index === 0 ? 1.4 : index === 1 ? 3.8 : 6.2,
-        reliabilityScore: index === 0 ? 96 : index === 1 ? 89 : 82,
-      });
-      return {
-        id: `match-${listing.id}`,
-        listingId: listing.id,
-        sellerName: listing.sellerName,
-        location: listing.location,
-        quantityKwh: listing.quantityKwh,
-        priceInrPerKwh: listing.priceInrPerKwh,
-        score,
-        rationale:
-          index === 0
-            ? "Closest approved supply with a strong quantity fit."
-            : "Good price and reliability; grid suitability slightly lowers the rank.",
-        factors: [
-          `${index === 0 ? "1.4" : index === 1 ? "3.8" : "6.2"} km proximity`,
-          `${index === 0 ? "96" : index === 1 ? "89" : "82"}% reliability`,
-          listing.gridDecision === "APPROVED" ? "approved grid window" : "adjusted grid window",
-        ],
-      };
-    })
-    .sort((a, b) => b.score - a.score);
-  res.json(GetMatchRecommendationsResponse.parse(recommendations));
-});
+// Transactions & SHA-256 Ledger Verification
+router.get("/v1/transactions", listTransactions);
+router.get("/v1/transactions/ledger/verify", verifyLedger);
+router.get("/v1/transactions/:id", getTransactionById);
+router.get("/v1/transactions/:id/verify", verifyTransaction);
 
-router.get("/v1/auth/session", (req, res) => {
-  res.json(
-    GetAuthSessionResponse.parse({
-      authenticated: Boolean(req.authContext),
-      role: req.authContext?.role ?? "PROSUMER",
-      displayName: req.authContext?.displayName ?? "Guest",
-    }),
-  );
-});
+// Payments & Webhooks
+router.post("/v1/transactions/:id/payment", paymentRateLimit, createPaymentForTransaction);
+router.get("/v1/transactions/:id/payment", getPaymentForTransaction);
+router.post("/v1/payments/webhook/:provider", handlePaymentWebhook);
+
+// AI Intelligence Layer (Forecasting, Recommendations, Anomalies, Assistant)
+router.get("/v1/ai/health", getAiHealth);
+router.get("/v1/ai/predictions", listPredictions);
+router.post("/v1/ai/predictions/generation", predictionRateLimit, generateGenerationForecast);
+router.post("/v1/ai/predictions/demand", predictionRateLimit, generateDemandForecast);
+router.post("/v1/ai/predictions/price", predictionRateLimit, generatePriceSignal);
+
+router.get("/v1/recommendations/smart-sell", getSmartSellRecommendations);
+router.get("/v1/recommendations/smart-buy", getSmartBuyRecommendations);
+router.post("/v1/recommendations/:id/dismiss", dismissRecommendation);
+
+router.get("/v1/ai/anomalies", listAnomalies);
+router.post("/v1/ai/anomalies/detect", detectAnomaly);
+router.post("/v1/ai/anomalies/:id/review", reviewAnomaly);
+
+router.post("/v1/assistant/chat", assistantRateLimit, chatAssistant);
+router.get("/v1/assistant/context", getAssistantContext);
+
+// Auth Session
+router.get("/v1/auth/session", getAuthSession);
+
+// Real-Time Operations & Control Room Portals
+router.get("/v1/operations/realtime/stream", handleRealtimeStream);
+router.post("/v1/operations/simulation/trigger", simulationRateLimit, handleTriggerSimulation);
+router.get("/v1/operations/utility/dashboard", handleGetUtilityDashboard);
+router.get("/v1/operations/admin/dashboard", handleGetAdminDashboard);
+router.get("/v1/operations/regulator/dashboard", handleGetRegulatorDashboard);
+router.get("/v1/operations/alerts", handleGetAlerts);
+router.post("/v1/operations/alerts/:id/acknowledge", handleAcknowledgeAlert);
 
 export default router;

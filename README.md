@@ -1,79 +1,49 @@
 # GridTrade
 
-GridTrade is a digital coordination, intelligence, marketplace, and
-transaction-record layer for local renewable energy. It connects rooftop-solar
-prosumers with nearby consumers while the existing electrical grid continues
-to carry the electricity.
+GridTrade is an AI-powered, grid-aware P2P renewable energy trading platform and digital coordination layer for local solar energy. It connects rooftop-solar prosumers with nearby energy consumers while the physical grid carries the electricity.
 
-## What is implemented
+## Architecture
 
-- Premium control-room web experience with dashboard, marketplace, solar,
-  grid, activity, and settings routes.
-- Versioned Express REST API with generated React Query hooks and Zod
-  validation.
-- PostgreSQL-backed domain schema for users, solar systems, energy data,
-  listings, trades, transactions, payments, SHA-256 hash records, grid data,
-  AI predictions, and audit logs.
-- Surplus calculation, listing ownership checks, availability validation,
-  deterministic grid decisions, and multi-factor match scoring.
-- Request IDs, structured pino logs, error envelopes, CORS, Helmet, security
-  headers, and write rate limiting.
-- Redis coordination boundary for caching, queues, rate limiting, and later
-  event coordination.
-- FastAPI boundary for future generation, demand, price, and anomaly models.
-- Docker Compose for local PostgreSQL and Redis.
+- **Frontend:** React 19 + TypeScript + Vite + Tailwind CSS + Recharts + Leaflet.
+- **Backend API:** Node.js + Express.js REST API (`/api/v1`). Modular architecture: controllers → domain services → repositories.
+- **Durable Storage:** PostgreSQL + Prisma ORM (`prisma/schema.prisma`). Single source of truth.
+- **Coordination Layer:** Redis (`ioredis`) for Cache, Queues, Rate Limiting, and Pub/Sub event coordination (with local in-memory fallback).
+- **AI Service Boundary:** FastAPI Python service (`apps/ai/main.py`) for generation, demand, price, and anomaly prediction models.
 
-The first phase intentionally does not implement trained forecasting models,
-blockchain, smart contracts, physical meter integrations, EV/V2G, or complex
-payment gateways.
+## What is Implemented
 
-## Local setup
-
-1. Copy `.env.example` to `.env` and set `DATABASE_URL`.
-2. Start local services when working outside the managed development database:
-
-   ```bash
-   docker compose up -d postgres redis
-   ```
-
-3. Install dependencies:
-
-   ```bash
-   pnpm install
-   ```
-
-4. Apply the development database schema:
-
-   ```bash
-   pnpm --filter @workspace/db run push
-   ```
-
-5. Start the API and web workflows from the Replit workspace, or run the
-   package commands directly with `PORT` and `BASE_PATH` set.
+- Hardened PostgreSQL schema with `User`, `SolarSystem`, `EnergyData`, `Listing`, `Demand`, `Trade`, `Transaction`, `Payment`, `HashRecord`, `GridData`, `AiPrediction`, `AuditLog`.
+- Repeatable Prisma seed with Scenarios A (Sunny surplus), B (High demand), C (Grid congestion restriction), and D (Balanced grid).
+- Express API with thin controllers, domain services, repository pattern, and standardized error envelopes.
+- Centralized RBAC permission model with ownership-aware authorization.
+- Redis coordination wrappers for Cache, Queue, RateLimit, and Realtime event publishing.
+- FastAPI AI boundary endpoints for generation, demand, price, and anomaly predictions.
+- Comprehensive unit test suite covering energy calculations, decimal arithmetic, grid decisions, multi-factor matching, SHA-256 hashing, anti-tampering, and RBAC authorization.
 
 ## Commands
 
 ```bash
+# Generate Prisma Client & OpenAPI contracts
+pnpm run prisma:generate
 pnpm --filter @workspace/api-spec run codegen
+
+# Validate types, lint, and run tests
 pnpm run typecheck
 pnpm run test
+
+# Database operations
+pnpm run prisma:migrate
+pnpm run db:seed
+
+# Build application packages
 pnpm --filter @workspace/api-server run build
-PORT=4173 BASE_PATH=/ pnpm --filter @workspace/gridtrade-web run build
+pnpm --filter @workspace/gridtrade-web run build
 ```
 
-## Architecture
-
-The React web app calls the versioned API under `/api/v1`. The API is a
-modular monolith: route handlers validate inputs and delegate domain rules.
-PostgreSQL is durable source of truth. Redis is optional, temporary
-coordination infrastructure. The AI service is intentionally separate so
-Python models can evolve without splitting the core business API.
-
 See:
-
 - `docs/architecture/system-overview.md`
 - `docs/architecture/domain-boundaries.md`
 - `docs/api/api-conventions.md`
 - `docs/security/security-baseline.md`
+- `docs/decisions/ADR-005-prisma-as-canonical-data-access.md`
 - `prisma/schema.prisma`
-- `lib/db/src/schema/index.ts`

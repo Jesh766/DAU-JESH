@@ -5,10 +5,13 @@
  * GridTrade renewable-energy intelligence and P2P coordination API
  * OpenAPI spec version: 0.1.0
  */
+import type { MatchReason } from './matchReason';
+import type { MatchScoreBreakdown } from './matchScoreBreakdown';
 
 export interface MatchRecommendation {
   id: string;
   listingId: string;
+  demandId?: string;
   sellerName: string;
   location: string;
   quantityKwh: number;
@@ -20,4 +23,6 @@ export interface MatchRecommendation {
   score: number;
   rationale: string;
   factors: string[];
+  reasons?: MatchReason[];
+  breakdown?: MatchScoreBreakdown;
 }
