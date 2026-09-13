@@ -28,7 +28,7 @@ import {
   useListListings,
   useListSolarSystems,
 } from '@workspace/api-client-react';
-import { DataState, PageHeader, formatCurrency, formatNumber, formatWhen } from '@/components/common-ui';
+import { DataState, PageHeader, ensureArray, formatCurrency, formatNumber, formatWhen } from '@/components/common-ui';
 
 function MatchBreakdownModal({ match, onClose, onPreviewTrade }: { match: any; onClose: () => void; onPreviewTrade: (listingId: string) => void }) {
   const b = match.breakdown ?? {};
