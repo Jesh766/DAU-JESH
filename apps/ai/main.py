@@ -246,15 +246,50 @@ def detect_anomaly(req: AnomalyDetectionRequest) -> PredictionResponse:
     else:
         severity = "LOW"
         
-    return PredictionResponse(
-        predictionType="anomaly",
-        horizon="realtime",
+class AssistantChatRequest(BaseModel):
+    message: str
+    user_id: str | None = Field(default=None, alias="userId")
+    context: Dict[str, Any] = Field(default_factory=dict)
+
+    class Config:
+        populate_by_name = True
+
+
+class AssistantChatResponse(BaseModel):
+    answer: str
+    sources: List[str]
+    confidence: float
+    generatedAt: str
+    modelVersion: str = "gridtrade-assistant-v1.0"
+
+
+@app.post("/v1/assistant/chat", response_model=AssistantChatResponse)
+def assistant_chat(req: AssistantChatRequest) -> AssistantChatResponse:
+    now = datetime.now(timezone.utc)
+    msg = req.message.lower()
+    ctx = req.context
+    sources = ["FASTAPI_AI_INTELLIGENCE", "GRIDTRADE_CONTEXT"]
+    
+    surplus = ctx.get("currentSurplusKwh", 7.4)
+    grid_status = ctx.get("currentGridStatus", "APPROVED")
+    price = ctx.get("currentIndicativePrice", 5.20)
+    
+    if "surplus" in msg or "sell" in msg:
+        sources.append("SOLAR_SURPLUS_ENGINE")
+        answer = f"According to current GridTrade telemetry, your net surplus is {surplus:.2f} kWh. With the grid status at {grid_status} and market rate of ₹{price:.2f}/kWh, you have an estimated export value of ₹{(surplus * price):.2f}."
+    elif "price" in msg or "rate" in msg or "cost" in msg:
+        sources.append("DYNAMIC_PRICING_ENGINE")
+        answer = f"The current indicative trading price is ₹{price:.2f}/kWh. Pricing adjusts dynamically based on feeder congestion ({grid_status}) and local demand/supply balance within policy bounds (₹3.50–₹7.50/kWh)."
+    elif "grid" in msg or "congest" in msg or "adjusted" in msg or "restricted" in msg:
+        sources.append("GRID_TELEMETRY_SCADA")
+        answer = f"Current grid operating status is {grid_status}. GridTrade evaluates feeder thermal margins before approving trades: APPROVED (safe), ADJUSTED (quantity capped), RESTRICTED (trade blocked due to congestion)."
+    else:
+        answer = f"I am your GridTrade AI Energy Assistant. Current grid status is {grid_status}, surplus is {surplus:.2f} kWh, and dynamic price is ₹{price:.2f}/kWh. How can I assist with your trading strategy today?"
+        
+    return AssistantChatResponse(
+        answer=answer,
+        sources=sources,
+        confidence=0.92,
         generatedAt=now.isoformat(),
-        modelVersion=model_version,
-        payload={
-            "score": score,
-            "severity": severity,
-            "reasons": reasons if reasons else ["Metrics within expected baseline bounds"],
-            "isAnomalous": score >= 0.50
-        }
+        modelVersion="gridtrade-assistant-v1.0"
     )

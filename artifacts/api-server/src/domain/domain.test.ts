@@ -480,6 +480,86 @@ describe("AI Intelligence Layer (Phase 5)", () => {
     expect(response.confidence).toBeGreaterThan(0.80);
     expect(response.suggestedActions).toBeDefined();
   });
+
+  it("enforces read-only state mutation guard on assistant commands", async () => {
+    const { ContextualAssistantProvider } = await import("../services/assistant.service");
+    const provider = new ContextualAssistantProvider();
+
+    const response = await provider.generateResponse(
+      "execute trade for 10 kWh",
+      {
+        userId: "user-test",
+        userRole: "PROSUMER",
+      }
+    );
+
+    expect(response.answer).toContain("read-only decision-support assistant");
+    expect(response.sources).toContain("SECURITY_POLICY_GUARD");
+  });
+
+  it("explains ADJUSTED trade decisions grounded in feeder capacity limits", async () => {
+    const { ContextualAssistantProvider } = await import("../services/assistant.service");
+    const provider = new ContextualAssistantProvider();
+
+    const response = await provider.generateResponse(
+      "Why was my trade adjusted to 10 kW?",
+      {
+        userId: "user-test",
+        currentGridStatus: "ADJUSTED",
+        congestionPercent: 78.0,
+        latestTrade: {
+          id: "tr-123",
+          status: "ADJUSTED",
+          quantityKwh: 10.0,
+          requestedKwh: 20.0,
+          agreedPriceInrPerKwh: 6.20,
+          netAmountInr: 62.0,
+          gridDecision: "ADJUSTED",
+          createdAt: new Date().toISOString(),
+        },
+      }
+    );
+
+    expect(response.answer).toContain("ADJUSTED");
+    expect(response.answer).toContain("20.0 kW");
+    expect(response.answer).toContain("10.0 kW");
+    expect(response.sources).toContain("GRID_AWARE_DECISION_ENGINE");
+  });
+
+  it("explains RESTRICTED grid status and blocks ungrounded trading claims", async () => {
+    const { ContextualAssistantProvider } = await import("../services/assistant.service");
+    const provider = new ContextualAssistantProvider();
+
+    const response = await provider.generateResponse(
+      "Why is trading restricted right now?",
+      {
+        userId: "user-test",
+        currentGridStatus: "RESTRICTED",
+        congestionPercent: 94.0,
+        frequencyHz: 49.50,
+      }
+    );
+
+    expect(response.answer).toContain("RESTRICTED");
+    expect(response.answer).toContain("94.0%");
+    expect(response.sources).toContain("SCADA_FEEDER_TELEMETRY");
+  });
+
+  it("explains GridTrade differentiation versus unconstrained P2P markets", async () => {
+    const { ContextualAssistantProvider } = await import("../services/assistant.service");
+    const provider = new ContextualAssistantProvider();
+
+    const response = await provider.generateResponse(
+      "Why is GridTrade different from a normal P2P marketplace?",
+      {
+        userId: "user-test",
+        userRole: "PROSUMER",
+      }
+    );
+
+    expect(response.answer).toContain("cheap or nearby");
+    expect(response.answer).toContain("digital coordination and record layer");
+  });
 });
 
 describe("Real-Time Operations & Control Room Portals (Phase 6)", () => {
