@@ -8,7 +8,7 @@ GridTrade is an AI-powered, grid-aware P2P renewable energy trading platform and
 - **Backend API:** Node.js + Express.js REST API (`/api/v1`). Modular architecture: controllers → domain services → repositories.
 - **Durable Storage:** PostgreSQL + Prisma ORM (`prisma/schema.prisma`). Single source of truth.
 - **Coordination Layer:** Redis (`ioredis`) for Cache, Queues, Rate Limiting, and Pub/Sub event coordination (with local in-memory fallback).
-- **AI Service Boundary:** FastAPI Python service (`apps/ai/main.py`) for generation, demand, price, and anomaly prediction models.
+- **AI Service Boundary:** FastAPI Python service (`apps/ai/main.py`) providing a heuristic forecasting engine (ML-ready API interface) for generation, demand, price, and anomaly evaluation.
 
 ## What is Implemented
 
@@ -17,8 +17,8 @@ GridTrade is an AI-powered, grid-aware P2P renewable energy trading platform and
 - Express API with thin controllers, domain services, repository pattern, and standardized error envelopes.
 - Centralized RBAC permission model with ownership-aware authorization.
 - Redis coordination wrappers for Cache, Queue, RateLimit, and Realtime event publishing.
-- FastAPI AI boundary endpoints for generation, demand, price, and anomaly predictions.
-- Comprehensive unit test suite covering energy calculations, decimal arithmetic, grid decisions, multi-factor matching, SHA-256 hashing, anti-tampering, and RBAC authorization.
+- FastAPI AI boundary endpoints for generation, demand, price, and anomaly predictions (heuristic formulas with ML-ready API schema).
+- Domain unit test suite covering energy calculations, decimal arithmetic, grid decisions, multi-factor matching, SHA-256 hashing, anti-tampering, and RBAC authorization. Note: Test coverage is backend-domain-logic focused.
 
 ## Commands
 

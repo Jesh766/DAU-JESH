@@ -425,6 +425,22 @@ describe("settlement provider & payment state machine", () => {
     expect(result.providerPaymentId.startsWith("UPI-GT-")).toBe(true);
     expect(result.paidAt).toBeDefined();
   });
+
+  it("handles payment failure path when simulation trigger is passed or amount is 9999.99", async () => {
+    const { PrototypeUpiSettlementProvider } = await import("./settlement-provider");
+    const { Decimal } = await import("@prisma/client/runtime/library");
+
+    const provider = new PrototypeUpiSettlementProvider();
+    const result = await provider.createPayment({
+      transactionId: "tx-test-fail-102",
+      amountInr: new Decimal("9999.99"),
+      currency: "INR",
+    });
+
+    expect(result.status).toBe("FAILED");
+    expect(result.paidAt).toBeUndefined();
+    expect(result.metadata?.failureReason).toBe("SIMULATED_GATEWAY_DECLINE");
+  });
 });
 
 describe("AI Intelligence Layer (Phase 5)", () => {

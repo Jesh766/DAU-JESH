@@ -2,7 +2,7 @@
 
 ## Overview
 
-GridTrade incorporates a multi-tier AI Intelligence Layer designed for solar energy generation forecasting, consumer demand forecasting, price signal boundaries, anomaly detection, smart trade recommendations, and an explainable AI Energy Assistant.
+GridTrade incorporates a multi-tier **heuristic forecasting engine (ML-ready interface)** designed for solar energy generation forecasting, consumer demand forecasting, price signal boundaries, anomaly detection, smart trade recommendations, and an explainable AI Energy Assistant. Note: The FastAPI Python service executes deterministic mathematical heuristics (parabolic solar curves, hourly load multipliers) using explicit ML-ready API schemas.
 
 ---
 
@@ -10,8 +10,8 @@ GridTrade incorporates a multi-tier AI Intelligence Layer designed for solar ene
 
 - **Protocol**: HTTP REST API operating on `http://localhost:8000`.
 - **Endpoints**:
-  - `POST /v1/predict/generation`: Solar generation forecasting with diurnal curve simulation & historical averaging.
-  - `POST /v1/predict/demand`: Household consumer demand forecasting with double-peak profile.
+  - `POST /v1/predict/generation`: Solar generation forecasting with diurnal curve simulation & historical averaging (heuristic rules).
+  - `POST /v1/predict/demand`: Household consumer demand forecasting with double-peak profile (heuristic rules).
   - `POST /v1/predict/price`: Dynamic market price signal prediction.
   - `POST /v1/detect/anomaly`: Metric anomaly scoring (frequency, cancellation rates, energy volumes, price bounds).
   - `GET /health` & `GET /ready`: Health check endpoints.

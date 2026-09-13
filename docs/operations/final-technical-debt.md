@@ -25,15 +25,20 @@
 
 ### P1 — Significant Technical Debt
 
-1. **Frontend Single-File Component Structuring (`App.tsx` Bundle Size)**
-   - **Context:** The frontend application UI is primarily defined in a single monolithic `App.tsx` file (1,888 lines). While TypeScript typechecking passes cleanly and Vite builds without error, the minified JS bundle size is 809.3 kB (triggering Vite's 500 kB warning).
-   - **Impact:** Initial page load time is ~320ms on desktop; slightly higher on mobile browsers.
+1. **Monolithic Frontend Component Structuring (`App.tsx` Bundle Size)**
+   - **Context:** The frontend application UI is currently defined in a monolithic `App.tsx` file (2,733 lines). While TypeScript typechecking passes cleanly and Vite builds without error, the minified JS bundle size exceeds Vite's 500 kB recommended threshold.
+   - **Impact:** Initial page load time is slightly higher due to monolithic bundle downloading.
    - **Remediation Plan:** Refactor page views (Dashboard, Marketplace, Control Room, AI Cockpit) into dedicated component files under `src/pages/` and apply React `lazy()` code-splitting.
 
-2. **Database Resilience in Local Test Suite**
-   - **Context:** Integration tests use graceful fallback handlers when local PostgreSQL is unreachable on `localhost:5432`.
-   - **Impact:** Console test logs contain logged warnings when tests run without an active PostgreSQL instance, although all 57 assertions pass cleanly.
-   - **Remediation Plan:** Add a lightweight Docker Compose test wrapper (`pnpm test:docker`) or set up `pg-mem` for zero-console-warning unit testing.
+2. **AI Service Implementation (Heuristic Rules vs Trained ML Models)**
+   - **Context:** The Python service (`apps/ai/main.py`) exposes FastAPI prediction endpoints (`/v1/predict/generation`, `/v1/predict/demand`, `/v1/detect/anomaly`). These endpoints currently execute deterministic mathematical heuristics (parabolic solar irradiance curves, fixed hourly load multipliers) rather than fitted/trained machine learning models.
+   - **Impact:** While API contracts are production-ready, prediction outputs reflect static formulas rather than learned data patterns.
+   - **Remediation Plan:** Transition the generation forecast endpoint to a learned scikit-learn regression model trained on historical telemetry.
+
+3. **Test Suite Scope & Coverage Boundaries**
+   - **Context:** Automated testing consists of 61 test assertions housed within a single domain logic test file (`artifacts/api-server/src/domain/domain.test.ts`). There are currently no HTTP controller integration tests, no React frontend unit/UI tests, and no native Python `pytest` tests for the FastAPI AI sidecar.
+   - **Impact:** HTTP routing, frontend component state, and Python AI endpoints lack automated regression coverage in CI.
+   - **Remediation Plan:** Expand test coverage to include API controller integration tests, React component tests, and native `pytest` suites for `apps/ai`.
 
 ---
 

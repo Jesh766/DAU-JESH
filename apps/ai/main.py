@@ -3,10 +3,27 @@ from typing import Literal, List, Dict, Any
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
+# ---------------------------------------------------------------------------
+# Heuristic Formula Constants (Placeholder Parameters for ML-Ready Boundary)
+# ---------------------------------------------------------------------------
+DEFAULT_SOLAR_CAPACITY_FACTOR = 0.42  # Heuristic solar irradiance factor
+SOLAR_GENERATION_MULTIPLIER = 1.1    # Inverter loss & derating baseline multiplier
+BASE_CONFIDENCE_WITH_HISTORY = 0.95  # Confidence score when historical telemetry is present
+BASE_CONFIDENCE_NO_HISTORY = 0.85    # Baseline confidence when defaulting to nominal capacity
+
+DEMAND_PEAK_MORNING_FACTOR = 1.35    # Morning peak load factor (07:00-09:00)
+DEMAND_PEAK_EVENING_FACTOR = 1.50    # Evening peak load factor (18:00-22:00)
+DEMAND_NIGHT_FACTOR = 0.40           # Overnight low load factor (00:00-05:00)
+DEMAND_OFFPEAK_FACTOR = 0.90         # Midday offpeak load factor
+
+BASE_PRICE_INR_PER_KWH = 4.80        # Base tariff baseline (INR/kWh)
+MIN_PRICE_BOUND_INR = 3.50           # Minimum regulatory price floor
+MAX_PRICE_BOUND_INR = 7.50           # Maximum regulatory price ceiling
+
 app = FastAPI(
-    title="GridTrade AI Service",
+    title="GridTrade AI & Heuristic Forecasting Service",
     version="1.0.0",
-    description="Intelligent Forecasting, Pricing Signal, Anomaly Detection, and AI Assistance Boundary for GridTrade.",
+    description="Heuristic Forecasting Engine (ML-ready interface), Pricing Signal, Anomaly Detection, and AI Assistance Boundary for GridTrade.",
 )
 
 
@@ -90,7 +107,7 @@ def predict_generation(req: GenerationPredictionRequest) -> PredictionResponse:
     model_version = "generation-forecast-v1.0"
     
     historical_gen = [r.generationKwh for r in req.historicalReadings if r.generationKwh > 0]
-    base_avg = sum(historical_gen) / len(historical_gen) if historical_gen else (req.capacityKw * 0.42)
+    base_avg = sum(historical_gen) / len(historical_gen) if historical_gen else (req.capacityKw * DEFAULT_SOLAR_CAPACITY_FACTOR)
     
     forecast_points: List[ForecastPoint] = []
     total_projected = 0.0
@@ -105,9 +122,9 @@ def predict_generation(req: GenerationPredictionRequest) -> PredictionResponse:
         else:
             solar_factor = 0.0
             
-        gen_val = round(base_avg * solar_factor * 1.1, 2)
+        gen_val = round(base_avg * solar_factor * SOLAR_GENERATION_MULTIPLIER, 2)
         total_projected += gen_val
-        confidence = round(0.85 + (0.10 if historical_gen else 0.0), 2)
+        confidence = round(BASE_CONFIDENCE_WITH_HISTORY if historical_gen else BASE_CONFIDENCE_NO_HISTORY, 2)
         
         forecast_points.append(
             ForecastPoint(
@@ -147,13 +164,13 @@ def predict_demand(req: DemandPredictionRequest) -> PredictionResponse:
         hour = future_time.hour
         
         if 7 <= hour <= 9:
-            demand_factor = 1.35
+            demand_factor = DEMAND_PEAK_MORNING_FACTOR
         elif 18 <= hour <= 22:
-            demand_factor = 1.50
+            demand_factor = DEMAND_PEAK_EVENING_FACTOR
         elif 0 <= hour <= 5:
-            demand_factor = 0.40
+            demand_factor = DEMAND_NIGHT_FACTOR
         else:
-            demand_factor = 0.90
+            demand_factor = DEMAND_OFFPEAK_FACTOR
             
         demand_val = round(base_demand * demand_factor, 2)
         total_demand += demand_val
@@ -186,10 +203,10 @@ def predict_price(req: PricePredictionRequest) -> PredictionResponse:
     now = datetime.now(timezone.utc)
     model_version = "price-signal-v1.0"
     
-    base_price = 4.80
+    base_price = BASE_PRICE_INR_PER_KWH
     ratio = req.demandKwh / max(req.surplusKwh, 1.0)
     indicative = round(base_price * max(0.7, min(1.8, ratio)), 2)
-    bounded_price = max(3.50, min(7.50, indicative))
+    bounded_price = max(MIN_PRICE_BOUND_INR, min(MAX_PRICE_BOUND_INR, indicative))
     
     return PredictionResponse(
         predictionType="price",
@@ -219,7 +236,6 @@ def detect_anomaly(req: AnomalyDetectionRequest) -> PredictionResponse:
     
     reasons = []
     score = 0.05
-    severity = "LOW"
     
     if trade_freq > 15:
         score += 0.40
@@ -246,6 +262,20 @@ def detect_anomaly(req: AnomalyDetectionRequest) -> PredictionResponse:
     else:
         severity = "LOW"
         
+    return PredictionResponse(
+        predictionType="anomaly",
+        horizon="realtime",
+        generatedAt=now.isoformat(),
+        modelVersion=model_version,
+        payload={
+            "score": score,
+            "severity": severity,
+            "reasons": reasons,
+            "flagged": score >= 0.40
+        }
+    )
+
+
 class AssistantChatRequest(BaseModel):
     message: str
     user_id: str | None = Field(default=None, alias="userId")

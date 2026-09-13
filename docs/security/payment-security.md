@@ -19,3 +19,9 @@ export interface SettlementProvider {
 ## Server-Side Rate & Financial Derivation
 - Payment amounts are strictly derived from server-side trade pricing calculations (`trade.netAmountInr`).
 - Client-supplied total price or payment status overrides are strictly ignored.
+
+## Settlement Simulation & Failure Paths
+- `PrototypeUpiSettlementProvider` implements an in-memory/simulated gateway suitable for hackathon demonstration.
+- **Success Path**: Returns status `PAID` with a generated virtual UPI reference (e.g., `UPI-GT-XXXXXX`) and simulated bank RRN.
+- **Failure Path**: Triggered by passing `simulateFailure: true` in metadata, using `paymentMethod: "simulate_failed_upi"`, or sending an amount of `9999.99`. Returns status `FAILED` with `SIMULATED_GATEWAY_DECLINE`. Tested in `domain.test.ts`.
+

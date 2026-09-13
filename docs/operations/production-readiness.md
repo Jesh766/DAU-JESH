@@ -11,8 +11,8 @@ This document records the production readiness status of the GridTrade platform 
 | Check | Status | Notes |
 |---|---|---|
 | Auth identity never from query params | ✅ | `req.authContext` is the sole identity source |
-| IDOR protection on trades | ✅ | Generic 404 for cross-user trade access |
-| IDOR protection on payments | ✅ | `getPaymentStatus` validates buyer ownership |
+| IDOR protection on trades | ✅ | `getTradeById` validates user trade ownership |
+| IDOR protection on payments | ✅ | `getPaymentStatus` validates buyer ownership (simulated settlement provider) |
 | Role escalation via query param blocked | ✅ | SSE stream reads role from `authContext` only |
 | GET route side-effect eliminated | ✅ | `getPaymentForTransaction` is now read-only |
 | Demo tokens blocked in production | ✅ | `resolveToken()` returns null for `demo:` prefix when `NODE_ENV=production` |

@@ -37,6 +37,25 @@ export class PrototypeUpiSettlementProvider implements SettlementProvider {
     const providerPaymentId = `UPI-GT-${randomHex}`;
     const now = new Date();
 
+    // Deterministic simulation failure trigger for testing failure handling paths
+    const isSimulatedFailure =
+      input.metadata?.simulateFailure === true ||
+      input.metadata?.paymentMethod === "simulate_failed_upi" ||
+      input.amountInr.toNumber() === 9999.99;
+
+    if (isSimulatedFailure) {
+      return {
+        providerPaymentId,
+        status: "FAILED",
+        paidAt: undefined,
+        metadata: {
+          paymentMethod: "UPI",
+          failureReason: "SIMULATED_GATEWAY_DECLINE",
+          simulated: true,
+        },
+      };
+    }
+
     return {
       providerPaymentId,
       status: "PAID",

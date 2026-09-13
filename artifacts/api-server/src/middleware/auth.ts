@@ -192,16 +192,14 @@ export const attachAuthContext: RequestHandler = (req, _res, next) => {
       next();
       return;
     }
-    // Token present but not resolvable — treat as unauthenticated in demo mode
-    // In production this would return 401; for now fall back gracefully.
   }
 
-  // No token: use default demo context (dev/demo only).
-  // In production deployments, this branch would return 401 to unauthenticated requests.
-  if (process.env.NODE_ENV !== "production") {
+  const isStrictAuth = process.env.STRICT_AUTH === "true" || process.env.NODE_ENV === "production";
+
+  // No valid token found: use default demo context only if NOT in strict auth / production mode.
+  if (!isStrictAuth) {
     req.authContext = DEFAULT_DEMO_CONTEXT;
   }
-  // In production, authContext remains undefined; requirePermission/requireRole will reject.
 
   next();
 };
